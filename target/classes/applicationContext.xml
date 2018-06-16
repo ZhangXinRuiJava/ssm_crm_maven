@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+						   http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+						   http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+						   http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd ">
+		
+	<!-- 读取连接池配置文件 -->
+	<context:property-placeholder location="classpath:db.properties"/>
+	<!-- 配置dhcp连接池 -->
+	<!-- <bean id="dataSource" destroy-method="close" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="${jdbc.driver}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean> -->
+	<!-- 配置druid连接池 -->
+	<bean id="dataSource" init-method="init" destroy-method="close" class=" com.alibaba.druid.pool.DruidDataSource">
+		<property name="driverClassName" value="${jdbc.driver}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean>
+	
+	<!-- 在使用mybatis时 spring使用sqlsessionFactoryBean 来管理mybatis的sqlsessionFactory -->
+	<bean name="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 注入数据源 -->
+		<property name="dataSource" ref="dataSource"></property>
+		<!-- 将mybatis配置文件的内容直接写到spring中 别名+映射文件位置(mapper代理扫描包方式配置了就不用写了)-->
+		<property name="typeAliasesPackage" value="com.itheima.domain"></property>
+	</bean>
+
+	<!-- 配置事务管理器 -->
+	<bean name="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	
+	<!-- 
+		1 注解方式配置事务
+			事务注解驱动，标注@Transactional的类和方法将具有事务性,比如注解在UserDaoImplTest
+	 -->
+	<!-- <tx:annotation-driven transaction-manager="transactionManager" /> -->
+	
+	<!-- 2 xml方式配置事务,可以，必须在service层管理事务 -->
+	<!-- 通知 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="insert*" read-only="false"/>
+			<tx:method name="add*" read-only="false"/>
+			<tx:method name="save*" read-only="false"/>
+			<tx:method name="persist*" read-only="false"/>
+			<tx:method name="update*" read-only="false"/>
+			<tx:method name="modify*" read-only="false"/>
+			<tx:method name="delete*" read-only="false"/>
+			<tx:method name="remove*" read-only="false"/>
+		</tx:attributes>
+	</tx:advice>
+	<!-- 将通知织入目标对象 -->
+	<aop:config>
+		<aop:pointcut expression="execution(* com.itheima.service.impl.*ServiceImpl.*(..))" id="perform"/>
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="perform"/>
+	</aop:config>
+	
+	<!--
+		 Mapper代理的方式开发方式二，扫描包方式配置代理
+		 	每个mapper代理对象的id就是类名，首字母小写
+	 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.itheima.mapper"></property>
+		<!-- 可选项，除非定义多个会话工厂--> 
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
+	</bean>
+	
+	<!-- service -->
+	<bean name="customerService" class="com.itheima.service.impl.CustomerServiceImpl">
+		<property name="customerMapper" ref="customerMapper"></property>
+	</bean>
+	
+	<bean name="baseDictService" class="com.itheima.service.impl.BaseDictServiceImpl">
+		<property name="baseDictMapper" ref="baseDictMapper"></property>
+	</bean>
+						   
+</beans>
